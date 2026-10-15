@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Academia Horizonte — Certificados</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- SALÓN: solo muestra lo que app.py ya calculó. Aquí no hay cálculos. -->
+  <header class="encabezado">
+    <h1>Academia Horizonte</h1>
+    <p>Certificados por cohorte — Technical Programs</p>
+  </header>
+
+  <!-- Contadores que la Cocina (app.py) ya calculó -->
+  <section class="contadores">
+    <div class="tarjeta verde">Aprobación: {{ contadores.aprobacion }}</div>
+    <div class="tarjeta azul">Participación: {{ contadores.participacion }}</div>
+    <div class="tarjeta roja">Sin certificado: {{ contadores.sin }}</div>
+  </section>
+
+  <!-- Filtro por programa (el filtrado real lo hace app.py) -->
+  <form method="get" action="/" class="filtro">
+    <label for="programa">Programa:</label>
+    <select name="programa" id="programa" onchange="this.form.submit()">
+      <option value="Todos" {% if filtro == "Todos" %}selected{% endif %}>Todos</option>
+      {% for p in programas %}
+      <option value="{{ p }}" {% if filtro == p %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit">Filtrar</button></noscript>
+  </form>
+
+  <!-- Tabla de resultados ordenada por programa y nombre -->
+  <h2>Resultados</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Nombre</th><th>Programa</th><th>Módulos</th>
+        <th>Promedio</th><th>Asistencia</th><th>Certificado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in resultados %}
+      <tr>
+        <td>{{ r.nombre }}</td>
+        <td>{{ r.programa }}</td>
+        <td>{{ r.modulos }}</td>
+        <td>{{ r.promedio }}</td>
+        <td>{{ r.asistencia }}</td>
+        {% if r.tipo == "Aprobación" %}
+        <td class="verde">{{ r.tipo }}</td>
+        {% elif r.tipo == "Participación" %}
+        <td class="azul">{{ r.tipo }}</td>
+        {% else %}
+        <td class="rojo">{{ r.tipo }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Casos raros que la Cocina detectó -->
+  <h2>Inconsistencias</h2>
+  <ul class="inconsistencias">
+    {% for i in inconsistencias %}
+    <li><strong>{{ i.caso }}:</strong> {{ i.detalle }}</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>

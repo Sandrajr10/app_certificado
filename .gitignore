@@ -1,0 +1,11 @@
+# Bytecode de Python
+__pycache__/
+*.pyc
+
+# Archivos temporales
+*.tmp
+*.bak
+*~
+
+# Carpeta local de Vercel CLI
+.vercel

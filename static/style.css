@@ -1,0 +1,17 @@
+/* Academia Horizonte: azul marino y dorado. Verde/azul/rojo solo para el tipo. */
+body { font-family: Arial, sans-serif; margin: 24px; background: #f4f1e6; color: #222; }
+.encabezado { background: #0a2a5a; color: #f5c945; padding: 16px 20px; border-radius: 8px; }
+.encabezado p { color: #ffffff; margin: 4px 0 0; }
+.contadores { display: flex; gap: 12px; margin: 16px 0; }
+.tarjeta { padding: 12px 16px; border-radius: 8px; font-weight: bold; background: #fff; border: 2px solid #0a2a5a; }
+.tarjeta.verde { border-color: green; color: green; }
+.tarjeta.azul { border-color: #0a2a5a; color: #0a2a5a; }
+.tarjeta.roja { border-color: red; color: red; }
+.filtro { margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; background: #fff; }
+th { background: #0a2a5a; color: #f5c945; padding: 8px; }
+td { border: 1px solid #ccc; padding: 6px 8px; }
+td.verde { color: green; font-weight: bold; }
+td.azul { color: #0a2a5a; font-weight: bold; }
+td.rojo { color: red; font-weight: bold; }
+.inconsistencias li { margin-bottom: 6px; }
