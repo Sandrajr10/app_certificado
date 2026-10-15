@@ -32,7 +32,7 @@
 - App creada: `app.py`, `requirements.txt`, `iniciar_app.bat`, `templates/index.html`, `static/style.css` + `PLAN.md` y los dos `.xlsx` de `Insumos/`.
 - Verificado 2026-10-15: Python 3.12 instalado vía winget + `pip install -r requirements.txt` (Flask, openpyxl). App corriendo en http://localhost:5000 con contadores 19/3/1 verificados.
 - No hay `README`, manifiestos, tests, CI, ni `opencode.json`. No hay comandos de build/test/lint/typecheck; no inventarlos ni prometer su ejecución.
-- Verificado 2026-10-14: no es repo git. No inicializar git ni reestructurar sin pedirlo.
+- Repo git activo en rama `main` con remoto `origin` = https://github.com/Sandrajr10/app_certificado.git. `Insumos/` no se sube al remoto (datos locales). No reestructurar sin pedirlo.
 
 ## Insumos (solo lectura)
 - No editar `Insumos/*.xlsx`. Para pruebas, pedir al usuario una copia o una exportación a CSV.
