@@ -11,7 +11,7 @@
 ## Decisiones técnicas (ver PLAN.md para el orden)
 - Excel con `openpyxl` (lee `.xlsx` directo, liviana). Sin `pandas` (oculta la lógica) y sin `xlrd` (ya no lee `.xlsx`).
 - Web con `Flask` (mínimo, `app.py` + `templates/`). Sin `FastAPI`/`Django` (sobran para esto).
-- Estructura actual: `app.py`, `requirements.txt`, `vercel.json` y `.vercelignore` en raíz; `templates/index.html`; `public/static/style.css`; `demo/*.xlsx` (datos ficticios para la nube).
+- Estructura actual: `app.py`, `requirements.txt`, `vercel.json` y `.vercelignore` en raíz; `templates/index.html`, `templates/certificado.html`, `templates/mensaje.html`; `public/static/style.css`, `public/static/certificado.css`; `demo/*.xlsx` (datos ficticios para la nube).
 - `Identificacion` siempre como texto en el cruce.
 
 ## Entradas (columnas verificadas contra el binario el 2026-10-15 vía XML interno)
@@ -39,6 +39,11 @@
 - La variable de entorno `CARPETA_INSUMOS` permite apuntar a otra carpeta de datos sin tocar código.
 - Los estáticos van en `public/` (Vercel los sirve por CDN); Flask usa `static_folder="public/static"` para que también funcione en local.
 - `cargar_datos()` tiene caché por fecha de modificación de los Excel y devuelve un aviso si faltan archivos.
+
+## Rutas
+- `/` — tabla con contadores, filtro por programa e inconsistencias.
+- `/certificado/<identificacion>/<programa>` — certificado imprimible (Aprobación o Participación). Si la asistencia es < 80 muestra el motivo; si no existe la combinación, 404 con mensaje.
+- El certificado incluye cohorte, promedio, asistencia y fecha de emisión; el HTML no calcula nada.
 
 ## Insumos (solo lectura)
 - No editar `Insumos/*.xlsx`. Para pruebas, pedir al usuario una copia o una exportación a CSV.

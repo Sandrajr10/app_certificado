@@ -2,6 +2,7 @@
 # Toda la lógica vive aquí. La página solo muestra, no calcula.
 
 import os  # para leer variables de entorno (configuración en la nube)
+from datetime import date  # para la fecha de emisión del certificado
 from pathlib import Path  # para armar rutas de archivos
 
 from flask import Flask, render_template, request  # servidor web + páginas
@@ -157,6 +158,7 @@ def cargar_datos():
                 "identificacion": ident,
                 "nombre": maestro[(ident, programa)]["nombre"],
                 "programa": programa,
+                "cohorte": maestro[(ident, programa)]["cohorte"],
                 "modulos": len(datos["notas"]),
                 "promedio": round(promedio, 2),
                 "asistencia": round(asistencia, 2),
@@ -260,6 +262,53 @@ def index():
         programas=programas,
         filtro=filtro,
         aviso=aviso,
+    )
+
+
+# VARIABLE de tipo lista: nombres de los meses para la fecha del certificado
+MESES = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "setiembre", "octubre", "noviembre", "diciembre",
+]
+
+
+# FUNCIÓN: arma la fecha de hoy en texto (por ejemplo: 21 de octubre de 2026)
+def fecha_emision():
+    hoy = date.today()
+    return str(hoy.day) + " de " + MESES[hoy.month - 1] + " de " + str(hoy.year)
+
+
+# Ruta del certificado: se abre desde el enlace "Ver certificado" de la tabla
+@app.route("/certificado/<identificacion>/<path:programa>")
+def certificado(identificacion, programa):
+    resultados, contadores, inconsistencias, programas, aviso = cargar_datos()
+    # VARIABLE: aquí se guarda la fila que coincida con estudiante y programa
+    encontrado = None
+    # BUCLE: busca la combinación exacta (identificación + programa)
+    for r in resultados:
+        if r["identificacion"] == identificacion and r["programa"] == programa:
+            encontrado = r
+    # CONDICIONAL: si no existe, se muestra un mensaje en vez de un error feo
+    if encontrado is None:
+        return render_template(
+            "mensaje.html",
+            titulo="Certificado no encontrado",
+            detalle="No existe un estudiante con esa identificación en ese programa.",
+        ), 404
+    # CONDICIONAL: regla de negocio: con asistencia menor a 80 no se emite certificado
+    if encontrado["tipo"] == "Sin certificado":
+        return render_template(
+            "mensaje.html",
+            titulo="No se emite certificado",
+            detalle=encontrado["nombre"] + " tiene una asistencia de "
+            + str(encontrado["asistencia"])
+            + "%. El mínimo requerido es 80%.",
+        )
+    # Si cumple, se entrega el certificado ya calculado (el HTML no calcula nada)
+    return render_template(
+        "certificado.html",
+        r=encontrado,
+        fecha=fecha_emision(),
     )
 
 

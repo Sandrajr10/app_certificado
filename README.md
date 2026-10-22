@@ -66,6 +66,16 @@ python app.py
 > Importante: no subir datos personales reales a un repositorio público. La app
 > muestra nombres e identificaciones en la página.
 
+## Certificados
+
+En la tabla de resultados, cada estudiante con derecho a certificado tiene un
+enlace **Ver certificado**. La vista está lista para imprimir o guardar como PDF
+con el botón **Imprimir / Guardar PDF** (tamaño A4 horizontal).
+
+- **Aprobación:** promedio ≥ 70 y asistencia ≥ 80.
+- **Participación:** promedio < 70 y asistencia ≥ 80.
+- **Sin certificado:** la vista indica el motivo (asistencia menor a 80).
+
 ## Reglas de negocio
 
 - Se agrupa por `Identificacion + Programa`: un certificado por estudiante y programa.

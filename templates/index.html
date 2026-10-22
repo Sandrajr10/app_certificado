@@ -42,13 +42,13 @@
     <thead>
       <tr>
         <th>Nombre</th><th>Programa</th><th>Módulos</th>
-        <th>Promedio</th><th>Asistencia</th><th>Certificado</th>
+        <th>Promedio</th><th>Asistencia</th><th>Certificado</th><th>Acción</th>
       </tr>
     </thead>
     <tbody>
       {% if not resultados %}
       <tr>
-        <td colspan="6" class="vacio">No hay resultados para este programa.</td>
+        <td colspan="7" class="vacio">No hay resultados para este programa.</td>
       </tr>
       {% endif %}
       {% for r in resultados %}
@@ -65,6 +65,13 @@
         {% else %}
         <td class="rojo">{{ r.tipo }}</td>
         {% endif %}
+        <td class="accion">
+          {% if r.tipo == "Sin certificado" %}
+          —
+          {% else %}
+          <a href="{{ url_for('certificado', identificacion=r.identificacion, programa=r.programa) }}">Ver certificado</a>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
