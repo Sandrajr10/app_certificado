@@ -21,11 +21,19 @@ td.accion a { color: #0a2a5a; font-weight: bold; }
 td.accion a:hover { color: #8a6d1f; }
 .boton-enlace { display: inline-block; margin-top: 8px; padding: 10px 16px; background: #0a2a5a; color: #ffffff; text-decoration: none; border-radius: 6px; }
 .boton-enlace:hover { background: #8a6d1f; }
+.boton-enlace.salir { background: #8a6d1f; }
+.boton-enlace.salir:hover { background: #0a2a5a; }
+.enlaces-permiso { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+.enlace-detalle { margin-left: 12px; font-size: 13px; font-weight: normal; color: #0a2a5a; text-decoration: none; }
+.enlace-detalle:hover { text-decoration: underline; }
+.volver { margin: 16px 0 0; }
 
 /* Barra del usuario conectado (la llenan correo_sesion y rol_sesion de app.py) */
 .barra-usuario { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin: 0 0 12px; font-family: Arial, sans-serif; font-size: 14px; flex-wrap: wrap; }
 .usuario-correo { color: #0a2a5a; font-weight: bold; }
 .usuario-rol { background: #c9a227; color: #0a2a5a; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+.rol-admin { background: #c9a227; color: #0a2a5a; }
+.rol-usuario { background: #e8eef7; color: #0a2a5a; border: 1px solid #0a2a5a; }
 .boton-salir { background: #0a2a5a; color: #ffffff; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; }
 .boton-salir:hover { background: #c9a227; color: #0a2a5a; }
 

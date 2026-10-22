@@ -11,7 +11,7 @@
 ## Decisiones técnicas (ver PLAN.md para el orden)
 - Excel con `openpyxl` (lee `.xlsx` directo, liviana). Sin `pandas` (oculta la lógica) y sin `xlrd` (ya no lee `.xlsx`).
 - Web con `Flask` (mínimo, `app.py` + `templates/`). Sin `FastAPI`/`Django` (sobran para esto).
-- Estructura actual: `app.py`, `requirements.txt`, `vercel.json` y `.vercelignore` en raíz; `templates/login.html`, `templates/_barra_usuario.html`, `templates/index.html`, `templates/certificado.html`, `templates/mensaje.html`; `public/static/style.css`, `public/static/certificado.css`; `demo/*.xlsx` (datos ficticios para la nube); `.env.ejemplo` (sí se sube) y `.env` (ignorado).
+- Estructura actual: `app.py`, `requirements.txt`, `vercel.json` y `.vercelignore` en raíz; `templates/login.html`, `templates/_barra_usuario.html`, `templates/index.html`, `templates/inconsistencias.html`, `templates/sin_permiso.html`, `templates/certificado.html`, `templates/mensaje.html`; `public/static/style.css`, `public/static/certificado.css`; `demo/*.xlsx` (datos ficticios para la nube); `.env.ejemplo` (sí se sube) y `.env` (ignorado).
 - `Identificacion` siempre como texto en el cruce.
 
 ## Entradas (columnas verificadas contra el binario el 2026-10-15 vía XML interno)
@@ -43,7 +43,8 @@
 ## Rutas
 - `/login` — pantalla de entrada; valida correo y contraseña contra variables de entorno.
 - `/salir` — borra la sesión y vuelve al login.
-- `/` — tabla con contadores, filtro por programa e inconsistencias. Requiere sesión.
+- `/` — tabla con contadores, filtro por programa e inconsistencias (estas solo para rol `admin`). Requiere sesión.
+- `/inconsistencias` — página completa de inconsistencias, exclusiva de `admin`; con rol distinto responde 403 y `templates/sin_permiso.html`. Requiere sesión.
 - `/certificado/<identificacion>/<programa>` — certificado imprimible (Aprobación o Participación). Requiere sesión. Si la asistencia es < 80 muestra el motivo; si no existe la combinación, 404 con mensaje.
 - El certificado incluye cohorte, promedio, asistencia y fecha de emisión; el HTML no calcula nada.
 
@@ -52,8 +53,9 @@
 - Credenciales en variables de entorno: `ADMIN_CORREO`/`ADMIN_CLAVE` (rol `admin`) y `USUARIO_CORREO`/`USUARIO_CLAVE` (rol `usuario`). Nunca en el código.
 - Si falta cualquiera de las cuatro, se activa `MODO_DEMO` con credenciales de prueba visibles en `/login`.
 - `SECRET_KEY` firma la sesión; en Vercel debe configurarse como variable de entorno.
-- `requiere_login` protege `/`, `/certificado/...` y `/salir`; redirige a `/login` si no hay sesión.
-- El rol se muestra en la barra superior, pero **aún no limita vistas**: admin y usuario ven lo mismo (pendiente).
+- `requiere_login` protege `/`, `/certificado/...`, `/inconsistencias` y `/salir`; redirige a `/login` si no hay sesión.
+- `solo_admin` exige rol `admin` y responde 403 con `sin_permiso.html`; está aplicado a `/inconsistencias`.
+- En `/`, la lista de inconsistencias se vacía para roles distintos de `admin` y la sección se oculta en la plantilla. El rol se muestra como insignia (`rol-admin` dorada, `rol-usuario` clara).
 - `python-dotenv` carga `.env` en local; `.env` está en `.gitignore` y `.vercelignore`.
 
 ## Insumos (solo lectura)

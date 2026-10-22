@@ -13,6 +13,8 @@ iniciar_app.bat             # Arranque local con doble clic
 templates/login.html        # Pantalla de entrada (correo y contraseña)
 templates/_barra_usuario.html  # Correo, rol y botón Salir
 templates/index.html        # Página (el "salón": solo muestra)
+templates/inconsistencias.html  # Página completa, solo administradores
+templates/sin_permiso.html  # Respuesta amable del error 403
 public/static/style.css     # Estilos (Vercel los sirve desde public/)
 demo/                       # Excel ficticios para la demo pública
 Insumos/                    # Excel reales (NO se suben: datos personales)
@@ -62,8 +64,15 @@ leen de variables de entorno; nunca están escritas en el código.
    Variables*. `SECRET_KEY` es obligatoria para que la sesión se mantenga entre
    instancias.
 
-Roles actuales: `admin` y `usuario`. Por ahora ambos ven la misma información; el
-rol se muestra en el encabezado y la restricción de vistas por rol queda pendiente.
+Roles actuales: `admin` y `usuario`.
+
+- **Administrador:** ve los contadores, la tabla y la sección de inconsistencias,
+  además de la página completa `/inconsistencias`.
+- **Usuario:** ve solo los contadores y la tabla de certificados. Si intenta abrir
+  `/inconsistencias`, recibe un error 403 con una página explicativa.
+
+La protección está en `app.py` con el decorador `solo_admin`; el HTML solo oculta
+la sección para no confundir, pero no es la barrera de seguridad.
 
 ## Despliegue en Vercel
 

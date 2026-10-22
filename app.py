@@ -72,6 +72,18 @@ def requiere_login(vista):
     return envoltura
 
 
+# FUNCIÓN decoradora: deja pasar solo si la sesión tiene rol "admin"
+def solo_admin(vista):
+    @wraps(vista)
+    def envoltura(*args, **kwargs):
+        # CONDICIONAL: cualquier rol distinto de "admin" recibe un 403 amable
+        if session.get("rol") != "admin":
+            return render_template("sin_permiso.html"), 403
+        # Si es administrador, se ejecuta la ruta normalmente
+        return vista(*args, **kwargs)
+    return envoltura
+
+
 # FUNCIÓN: deja el correo y el rol disponibles en todas las plantillas
 @app.context_processor
 def datos_de_sesion():
@@ -364,6 +376,9 @@ def index():
     # VARIABLE de tipo texto: lo que el usuario eligió en el filtro (o "Todos")
     filtro = request.args.get("programa", "Todos")
     resultados, contadores, inconsistencias, programas, aviso = cargar_datos()
+    # CONDICIONAL: las inconsistencias solo se entregan al administrador
+    if session.get("rol") != "admin":
+        inconsistencias = []
     # CONDICIONAL: si hay filtro, deja solo ese programa; si no, muestra todo
     if filtro != "Todos":
         # BUCLE con CONDICIONAL implícito: filtra la lista por programa
@@ -378,6 +393,15 @@ def index():
         filtro=filtro,
         aviso=aviso,
     )
+
+
+# Ruta exclusiva del administrador: lista completa de inconsistencias
+@app.route("/inconsistencias")
+@requiere_login
+@solo_admin
+def inconsistencias():
+    resultados, contadores, lista, programas, aviso = cargar_datos()
+    return render_template("inconsistencias.html", inconsistencias=lista)
 
 
 # VARIABLE de tipo lista: nombres de los meses para la fecha del certificado

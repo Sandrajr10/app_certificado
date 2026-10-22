@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Acceso restringido — Academia Horizonte</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% include "_barra_usuario.html" %}
+
+  <header class="encabezado">
+    <h1>Academia Horizonte</h1>
+    <p>Certificados por cohorte — Technical Programs</p>
+  </header>
+
+  <!-- Página amable para un error 403: el rol no permite entrar -->
+  <div class="aviso">
+    <h2>Esta sección es solo para administradores</h2>
+    <p>
+      Tu sesión está abierta como <strong>{{ correo_sesion }}</strong>
+      con el rol <span class="usuario-rol rol-{{ rol_sesion }}">{{ rol_sesion }}</span>.
+    </p>
+    <p>Si necesitas ver esta información, pide a un administrador que revise tu cuenta.</p>
+
+    <div class="enlaces-permiso">
+      <a class="boton-enlace" href="{{ url_for('index') }}">← Volver al tablero</a>
+      <a class="boton-enlace salir" href="{{ url_for('salir') }}">Salir</a>
+    </div>
+  </div>
+</body>
+</html>

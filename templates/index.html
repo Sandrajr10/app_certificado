@@ -78,12 +78,16 @@
     </tbody>
   </table>
 
-  <!-- Casos raros que la Cocina detectó -->
-  <h2>Inconsistencias</h2>
+  <!-- Sección exclusiva del administrador (la ruta /inconsistencias también está protegida en app.py) -->
+  {% if rol_sesion == "admin" %}
+  <h2>Inconsistencias
+    <a class="enlace-detalle" href="{{ url_for('inconsistencias') }}">Ver página completa →</a>
+  </h2>
   <ul class="inconsistencias">
     {% for i in inconsistencias %}
     <li><strong>{{ i.caso }}:</strong> {{ i.detalle }}</li>
     {% endfor %}
   </ul>
+  {% endif %}
 </body>
 </html>

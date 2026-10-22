@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Inconsistencias — Academia Horizonte</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% include "_barra_usuario.html" %}
+
+  <header class="encabezado">
+    <h1>Academia Horizonte</h1>
+    <p>Inconsistencias para revisión — solo administradores</p>
+  </header>
+
+  <p class="volver">
+    <a class="boton-enlace" href="{{ url_for('index') }}">← Volver al tablero</a>
+  </p>
+
+  <!-- Lista completa que app.py entrega solo al rol admin -->
+  <h2>Inconsistencias</h2>
+  {% if inconsistencias %}
+  <ul class="inconsistencias">
+    {% for i in inconsistencias %}
+    <li><strong>{{ i.caso }}:</strong> {{ i.detalle }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="vacio">No hay inconsistencias registradas.</p>
+  {% endif %}
+</body>
+</html>

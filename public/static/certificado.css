@@ -43,6 +43,14 @@ body {
   letter-spacing: 1px;
 }
 
+.barra-usuario .rol-admin { background: #c9a227; color: #0a2a5a; }
+
+.barra-usuario .rol-usuario {
+  background: #e8eef7;
+  color: #0a2a5a;
+  border: 1px solid #0a2a5a;
+}
+
 .barra-usuario .boton-salir {
   background: #0a2a5a;
   color: #ffffff;
