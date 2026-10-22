@@ -105,6 +105,30 @@ muestra con el mismo aviso rojo.
 > `/certificado/...` lee los datos de fábrica y los subidos no se guardan. En esa
 > pantalla la columna de certificado muestra "No disponible".
 
+## Pruebas automáticas
+
+El proyecto incluye pruebas con `pytest` que simulan un navegador con el cliente
+de pruebas de Flask, sin abrir la app:
+
+```powershell
+python -m pytest -v
+```
+
+Las pruebas están en `tests/test_app.py` y usan sus propias credenciales de
+entorno, así que no dependen del archivo `.env` local:
+
+- abrir `/` sin sesión redirige a `/login`;
+- una contraseña incorrecta mantiene a la persona en la pantalla de entrada con
+  el mensaje de error;
+- un usuario normal recibe 403 al intentar subir Excel en `/cargar`;
+- al subir una copia en memoria del registro de `Insumos/` con las notas de
+  Camila Rojas en 40, los contadores cambian a 18 aprobaciones, 4
+  participaciones y 1 sin certificado.
+
+La última prueba lee los Excel de `Insumos/` y modifica solo una copia en
+memoria: los archivos originales nunca se tocan. Si `Insumos/` no existe (por
+ejemplo, en un clon sin datos personales), esa prueba se omite con un aviso.
+
 ## Despliegue en Vercel
 
 El repositorio ya está listo para Vercel (detección automática de Flask, sin

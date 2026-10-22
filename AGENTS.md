@@ -32,6 +32,7 @@
 - App creada: `app.py`, `requirements.txt`, `iniciar_app.bat`, `templates/index.html`, `public/static/style.css` + `PLAN.md`, `README.md` y los dos `.xlsx` de `Insumos/`.
 - Verificado 2026-10-15: Python 3.12 instalado vía winget + `pip install -r requirements.txt` (Flask, openpyxl). App corriendo en http://localhost:5000 con contadores 19/3/1 verificados.
 - Verificado 2026-10-21: panel de administrador con carga en memoria y descarga Excel. Pruebas locales: ver subidos (19 aprobaciones), descargar subidos (24 filas con encabezado), descargar fábrica, archivo faltante, extensión incorrecta, Excel inválido, envío de 5 MB (413) y usuario normal (403, sin panel).
+- Verificado 2026-10-21: suite `pytest` con 4 pruebas (redirección, clave incorrecta, 403 de usuario y contadores 18/4/1 con Excel modificado en memoria); todas pasan.
 - Repo git activo en rama `main` con remoto `origin` = https://github.com/Sandrajr10/app_certificado.git. `Insumos/` queda fuera del remoto (`.gitignore` + `.vercelignore`): datos personales. No reestructurar sin pedirlo.
 
 ## Despliegue (Vercel)
@@ -69,6 +70,12 @@
 - Validaciones con aviso rojo y sin página en blanco: faltan archivos, extensión distinta de `.xlsx`, Excel inválido/columnas incorrectas o tamaño excesivo. El detalle técnico se registra con `app.logger.warning`.
 - El panel muestra siempre el origen: "Datos de fábrica" o los nombres subidos. Con datos subidos aparece un aviso verde: viven solo en esa pantalla y al recargar se vuelve a fábrica (no hay almacenamiento).
 - Los resultados subidos no se guardan, así que los enlaces de certificado se ocultan ("No disponible") y el enlace a `/inconsistencias` no aparece en esa pantalla; el Excel descargado sí contiene todos los resultados.
+
+## Pruebas (pytest)
+- `tests/test_app.py` usa `app.test_client()`; no abre el servidor. Define `ADMIN_CORREO`, `ADMIN_CLAVE`, `USUARIO_CORREO`, `USUARIO_CLAVE` y `SECRET_KEY` antes de importar `app`, así que no depende de `.env`.
+- Ejecutar con `python -m pytest -v` (pytest está en `requirements.txt`). `pytest.ini` fija `testpaths = tests` y `pythonpath = .`.
+- Las cuatro pruebas cubren: redirección sin sesión, clave incorrecta, 403 de `usuario` en `/cargar` y cambio de contadores a 18/4/1 al subir una copia en memoria del registro de `Insumos/` con las notas de Camila Rojas en 40.
+- La prueba de contadores lee `Insumos/` pero nunca modifica los originales; si la carpeta no existe, se omite con `pytest.skip`.
 
 ## Insumos (solo lectura)
 - No editar `Insumos/*.xlsx`. Para pruebas, pedir al usuario una copia o una exportación a CSV.

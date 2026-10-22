@@ -16,5 +16,8 @@ Insumos/
 *.bak
 *~
 
+# Caché de pruebas
+.pytest_cache/
+
 # Carpeta local de Vercel CLI
 .vercel
