@@ -66,13 +66,44 @@ leen de variables de entorno; nunca están escritas en el código.
 
 Roles actuales: `admin` y `usuario`.
 
-- **Administrador:** ve los contadores, la tabla y la sección de inconsistencias,
-  además de la página completa `/inconsistencias`.
+- **Administrador:** ve los contadores, la tabla, la sección de inconsistencias,
+  la página completa `/inconsistencias` y el panel para subir los dos Excel.
 - **Usuario:** ve solo los contadores y la tabla de certificados. Si intenta abrir
-  `/inconsistencias`, recibe un error 403 con una página explicativa.
+  `/inconsistencias` o subir archivos, recibe un error 403 con una página
+  explicativa.
 
 La protección está en `app.py` con el decorador `solo_admin`; el HTML solo oculta
 la sección para no confundir, pero no es la barrera de seguridad.
+
+## Panel de administrador (subir Excel)
+
+En la página principal, solo el rol `admin` ve un panel con dos campos de archivo
+(Maestro de estudiantes y Registro de evaluaciones) y estas acciones:
+
+- **Procesar y ver en pantalla:** recalcula todo y muestra la tabla con los datos
+  subidos, sin guardarlos.
+- **Procesar y descargar Excel:** devuelve un `.xlsx` armado en memoria con los
+  resultados calculados (`send_file`).
+- **Descargar resultados de los datos de fábrica:** enlace a `/descargar`.
+
+Los archivos se leen en memoria con `io.BytesIO`; nunca se escriben en disco
+(Vercel tiene el sistema de archivos de solo lectura). La ruta `/cargar` está
+protegida con `solo_admin`.
+
+El panel muestra siempre el **origen** de los datos en pantalla: "Datos de
+fábrica" o los nombres de los archivos subidos. Cuando se muestran datos subidos,
+aparece un aviso verde: esos resultados viven solo en esa pantalla y al recargar
+la app se vuelve a los datos de fábrica, porque todavía no hay almacenamiento.
+
+Errores controlados (aviso rojo, sin página en blanco): falta un archivo,
+extensión distinta de `.xlsx`, Excel inválido o columnas incorrectas, y archivos
+de más de 4 MB. `MAX_CONTENT_LENGTH = 4 * 1024 * 1024` corta la petición antes de
+que Vercel rechace el envío (su límite ronda los 4.5 MB); el error 413 también se
+muestra con el mismo aviso rojo.
+
+> Los certificados de los resultados subidos no se pueden abrir: la ruta
+> `/certificado/...` lee los datos de fábrica y los subidos no se guardan. En esa
+> pantalla la columna de certificado muestra "No disponible".
 
 ## Despliegue en Vercel
 

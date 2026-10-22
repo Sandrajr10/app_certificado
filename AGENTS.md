@@ -31,6 +31,7 @@
 ## Estado actual
 - App creada: `app.py`, `requirements.txt`, `iniciar_app.bat`, `templates/index.html`, `public/static/style.css` + `PLAN.md`, `README.md` y los dos `.xlsx` de `Insumos/`.
 - Verificado 2026-10-15: Python 3.12 instalado vía winget + `pip install -r requirements.txt` (Flask, openpyxl). App corriendo en http://localhost:5000 con contadores 19/3/1 verificados.
+- Verificado 2026-10-21: panel de administrador con carga en memoria y descarga Excel. Pruebas locales: ver subidos (19 aprobaciones), descargar subidos (24 filas con encabezado), descargar fábrica, archivo faltante, extensión incorrecta, Excel inválido, envío de 5 MB (413) y usuario normal (403, sin panel).
 - Repo git activo en rama `main` con remoto `origin` = https://github.com/Sandrajr10/app_certificado.git. `Insumos/` queda fuera del remoto (`.gitignore` + `.vercelignore`): datos personales. No reestructurar sin pedirlo.
 
 ## Despliegue (Vercel)
@@ -47,6 +48,8 @@
 - `/inconsistencias` — página completa de inconsistencias, exclusiva de `admin`; con rol distinto responde 403 y `templates/sin_permiso.html`. Requiere sesión.
 - `/certificado/<identificacion>/<programa>` — certificado imprimible (Aprobación o Participación). Requiere sesión. Si la asistencia es < 80 muestra el motivo; si no existe la combinación, 404 con mensaje.
 - El certificado incluye cohorte, promedio, asistencia y fecha de emisión; el HTML no calcula nada.
+- `/cargar` — POST exclusivo de `admin` (`solo_admin`). Recibe `maestro` y `registro` con `enctype="multipart/form-data"` y el campo `accion` (`ver` o `descargar`). Procesa los Excel en memoria con `io.BytesIO`; nunca los guarda. Con `ver` muestra el tablero calculado en esa misma respuesta; con `descargar` devuelve un Excel armado en memoria con `send_file`.
+- `/descargar` — GET exclusivo de `admin`. Descarga en memoria los resultados de los datos de fábrica (enlace del panel).
 
 ## Acceso y sesiones
 - Flask `session` (cookie firmada). Sin base de datos todavía.
@@ -57,6 +60,15 @@
 - `solo_admin` exige rol `admin` y responde 403 con `sin_permiso.html`; está aplicado a `/inconsistencias`.
 - En `/`, la lista de inconsistencias se vacía para roles distintos de `admin` y la sección se oculta en la plantilla. El rol se muestra como insignia (`rol-admin` dorada, `rol-usuario` clara).
 - `python-dotenv` carga `.env` en local; `.env` está en `.gitignore` y `.vercelignore`.
+
+## Carga de Excel (panel admin)
+- El panel solo se renderiza si `rol_sesion == "admin"`; la protección real está en `/cargar` con `solo_admin`.
+- `cargar_datos(archivo_maestro=None, archivo_registro=None)` acepta dos archivos en memoria; si no se los pasa, lee los Excel de fábrica. Los datos subidos no usan la caché (cada archivo es distinto); los de fábrica sí.
+- `crear_excel(resultados)` arma el `.xlsx` en un `io.BytesIO` y se envía con `send_file`; no se escribe en disco.
+- Límite: `app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024` (4 MB). El manejador 413 vuelve al tablero con aviso rojo, porque Vercel corta cerca de 4.5 MB.
+- Validaciones con aviso rojo y sin página en blanco: faltan archivos, extensión distinta de `.xlsx`, Excel inválido/columnas incorrectas o tamaño excesivo. El detalle técnico se registra con `app.logger.warning`.
+- El panel muestra siempre el origen: "Datos de fábrica" o los nombres subidos. Con datos subidos aparece un aviso verde: viven solo en esa pantalla y al recargar se vuelve a fábrica (no hay almacenamiento).
+- Los resultados subidos no se guardan, así que los enlaces de certificado se ocultan ("No disponible") y el enlace a `/inconsistencias` no aparece en esa pantalla; el Excel descargado sí contiene todos los resultados.
 
 ## Insumos (solo lectura)
 - No editar `Insumos/*.xlsx`. Para pruebas, pedir al usuario una copia o una exportación a CSV.

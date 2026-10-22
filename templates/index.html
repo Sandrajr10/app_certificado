@@ -13,9 +13,50 @@
     <p>Certificados por cohorte — Technical Programs</p>
   </header>
 
+  <!-- Aviso rojo: archivo faltante, inválido o demasiado grande -->
+  {% if error %}
+  <div class="error">{{ error }}</div>
+  {% endif %}
+
+  <!-- Aviso verde: los datos subidos no se guardan en ningún lado -->
+  {% if es_subido %}
+  <div class="aviso-verde">
+    <strong>Estos resultados viven solo en esta pantalla.</strong>
+    Se calcularon con los archivos que acabas de subir. Al recargar la app se vuelve
+    a los datos de fábrica, porque todavía no hay un lugar donde guardarlos.
+  </div>
+  {% endif %}
+
   <!-- Aviso que envía app.py cuando faltan los Excel -->
   {% if aviso %}
   <div class="aviso">{{ aviso }}</div>
+  {% endif %}
+
+  <!-- Panel exclusivo del administrador -->
+  {% if rol_sesion == "admin" %}
+  <section class="panel-admin">
+    <h2>Panel de administrador</h2>
+    <p class="origen">Origen de los datos en pantalla: <strong>{{ origen }}</strong></p>
+
+    <form method="post" action="{{ url_for('cargar') }}" enctype="multipart/form-data">
+      <div class="campo-archivo">
+        <label for="maestro">Maestro de estudiantes</label>
+        <input type="file" id="maestro" name="maestro" accept=".xlsx" required>
+      </div>
+      <div class="campo-archivo">
+        <label for="registro">Registro de evaluaciones</label>
+        <input type="file" id="registro" name="registro" accept=".xlsx" required>
+      </div>
+      <div class="botones-panel">
+        <button type="submit" name="accion" value="ver">Procesar y ver en pantalla</button>
+        <button type="submit" name="accion" value="descargar" class="secundario">Procesar y descargar Excel</button>
+      </div>
+    </form>
+
+    <p class="descarga-fabrica">
+      <a class="boton-enlace" href="{{ url_for('descargar') }}">Descargar resultados de los datos de fábrica</a>
+    </p>
+  </section>
   {% endif %}
 
   <!-- Contadores que la Cocina (app.py) ya calculó -->
@@ -69,6 +110,8 @@
         <td class="accion">
           {% if r.tipo == "Sin certificado" %}
           —
+          {% elif es_subido %}
+          <span class="no-disponible">No disponible</span>
           {% else %}
           <a href="{{ url_for('certificado', identificacion=r.identificacion, programa=r.programa) }}">Ver certificado</a>
           {% endif %}
@@ -81,7 +124,9 @@
   <!-- Sección exclusiva del administrador (la ruta /inconsistencias también está protegida en app.py) -->
   {% if rol_sesion == "admin" %}
   <h2>Inconsistencias
+    {% if not es_subido %}
     <a class="enlace-detalle" href="{{ url_for('inconsistencias') }}">Ver página completa →</a>
+    {% endif %}
   </h2>
   <ul class="inconsistencias">
     {% for i in inconsistencias %}

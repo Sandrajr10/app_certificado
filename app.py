@@ -2,14 +2,15 @@
 # Toda la lógica vive aquí. La página solo muestra, no calcula.
 
 import hmac  # comparación segura de textos (correo y contraseña)
+import io  # BytesIO: archivos que viven en la memoria, no en el disco
 import os  # para leer variables de entorno (configuración en la nube)
 from datetime import date  # para la fecha de emisión del certificado
 from functools import wraps  # para conservar el nombre de las funciones decoradas
 from pathlib import Path  # para armar rutas de archivos
 
 from dotenv import load_dotenv  # lee el archivo .env cuando existe en local
-from flask import Flask, redirect, render_template, request, session, url_for
-from openpyxl import load_workbook  # para leer los Excel .xlsx
+from flask import Flask, redirect, render_template, request, send_file, session, url_for
+from openpyxl import Workbook, load_workbook  # leer y escribir Excel .xlsx
 
 # Carga las variables del archivo .env (en Vercel no existe y no pasa nada)
 load_dotenv()
@@ -20,6 +21,12 @@ app = Flask(__name__, static_folder="public/static", static_url_path="/static")
 
 # Clave para firmar la cookie de sesión. En producción debe venir de SECRET_KEY.
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "clave-solo-para-demostracion")
+
+# Límite del cuerpo de la petición: 4 MB (Vercel corta alrededor de 4.5 MB)
+app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024
+
+# Tipo de archivo que se devuelve al descargar un Excel
+MIMETYPE_EXCEL = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 # VARIABLES de tipo texto: credenciales leídas del entorno, NUNCA escritas aquí.
 # ADMIN_* entra con rol "admin"; USUARIO_* entra con rol "usuario".
@@ -140,38 +147,48 @@ def decidir_certificado(promedio, asistencia):
         return "Participación"
 
 
-# FUNCIÓN: lee los Excel y prepara todo lo que la página necesita
-def cargar_datos():
-    # VARIABLES de tipo ruta: ubicación de cada Excel según el entorno
-    carpeta = carpeta_insumos()
-    ruta_maestro = carpeta / ARCHIVO_MAESTRO
-    ruta_registro = carpeta / ARCHIVO_REGISTRO
+# FUNCIÓN: lee los Excel y prepara todo lo que la página necesita.
+# Si recibe archivos (BytesIO), los usa; si no, lee Insumos/ o demo/.
+def cargar_datos(archivo_maestro=None, archivo_registro=None):
+    # CONDICIONAL: los dos archivos subidos se leen directamente de la memoria
+    if archivo_maestro is not None and archivo_registro is not None:
+        # VARIABLE: sin clave de caché, porque cada archivo subido es distinto
+        clave = None
+        libro = load_workbook(archivo_maestro, read_only=True, data_only=True)
+        libro2 = load_workbook(archivo_registro, read_only=True, data_only=True)
+    else:
+        # Camino normal: ubicar la carpeta de datos de fábrica
+        carpeta = carpeta_insumos()
+        ruta_maestro = carpeta / ARCHIVO_MAESTRO
+        ruta_registro = carpeta / ARCHIVO_REGISTRO
 
-    # CONDICIONAL: si falta algún Excel se avisa en la página, no se rompe la app
-    if not ruta_maestro.exists() or not ruta_registro.exists():
-        aviso = (
-            "No se encontraron los archivos de Insumos. "
-            "Coloca Maestro_Estudiantes.xlsx y Registro_Evaluaciones.xlsx en Insumos/ "
-            "o configura la variable de entorno CARPETA_INSUMOS."
+        # CONDICIONAL: si falta algún Excel se avisa en la página, no se rompe la app
+        if not ruta_maestro.exists() or not ruta_registro.exists():
+            aviso = (
+                "No se encontraron los archivos de Insumos. "
+                "Coloca Maestro_Estudiantes.xlsx y Registro_Evaluaciones.xlsx en Insumos/ "
+                "o configura la variable de entorno CARPETA_INSUMOS."
+            )
+            return [], {"aprobacion": 0, "participacion": 0, "sin": 0}, [], [], aviso
+
+        # CONDICIONAL: si los archivos no cambiaron desde la última lectura, se reutiliza
+        clave = (
+            str(ruta_maestro),
+            ruta_maestro.stat().st_mtime_ns,
+            str(ruta_registro),
+            ruta_registro.stat().st_mtime_ns,
         )
-        return [], {"aprobacion": 0, "participacion": 0, "sin": 0}, [], [], aviso
+        if CACHE["clave"] == clave:
+            return CACHE["datos"]
 
-    # CONDICIONAL: si los archivos no cambiaron desde la última lectura, se reutiliza
-    clave = (
-        str(ruta_maestro),
-        ruta_maestro.stat().st_mtime_ns,
-        str(ruta_registro),
-        ruta_registro.stat().st_mtime_ns,
-    )
-    if CACHE["clave"] == clave:
-        return CACHE["datos"]
+        libro = load_workbook(ruta_maestro, read_only=True, data_only=True)
+        libro2 = load_workbook(ruta_registro, read_only=True, data_only=True)
 
     # --- 1. Leer el maestro: diccionario con clave (identificacion, programa) ---
     # VARIABLE de tipo diccionario: guarda los datos oficiales por estudiante+programa
     maestro = {}
     # VARIABLE de tipo conjunto: lista de programas sin repetidos (para el filtro)
     programas = set()
-    libro = load_workbook(ruta_maestro, read_only=True, data_only=True)
     hoja = libro.active
     # BUCLE: recorre las filas del Excel, saltando el encabezado (fila 1)
     for fila in list(hoja.rows)[1:]:
@@ -194,7 +211,6 @@ def cargar_datos():
     # --- 2. Leer el registro: agrupar notas y asistencias por (identificacion, programa) ---
     # VARIABLE de tipo diccionario: cada clave guarda sus listas de notas y asistencias
     grupos = {}
-    libro2 = load_workbook(ruta_registro, read_only=True, data_only=True)
     hoja2 = libro2.active
     # BUCLE: recorre cada evaluación del registro
     for fila in list(hoja2.rows)[1:]:
@@ -312,16 +328,13 @@ def cargar_datos():
         "sin": cont_sin,
     }
 
-    # Se guarda el resultado en la caché antes de devolverlo
-    CACHE["clave"] = clave
-    CACHE["datos"] = (
-        resultados,
-        contadores,
-        inconsistencias,
-        sorted(programas),
-        None,
-    )
-    return CACHE["datos"]
+    # VARIABLE: tupla con todo lo que necesita la página
+    datos = (resultados, contadores, inconsistencias, sorted(programas), None)
+    # CONDICIONAL: solo los datos de fábrica se guardan en la caché
+    if clave is not None:
+        CACHE["clave"] = clave
+        CACHE["datos"] = datos
+    return datos
 
 
 # Ruta de entrada: muestra el formulario y valida correo + contraseña
@@ -369,6 +382,60 @@ def salir():
     return redirect(url_for("login"))
 
 
+# FUNCIÓN: arma un Excel en memoria con la tabla de resultados
+def crear_excel(resultados):
+    # VARIABLE de tipo libro: un archivo Excel nuevo, todavía vacío
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "Resultados"
+    # Encabezados de la tabla
+    hoja.append([
+        "Identificacion", "Nombre", "Programa", "Cohorte",
+        "Modulos", "Promedio", "Asistencia", "Certificado",
+    ])
+    # BUCLE: una fila por estudiante y programa
+    for r in resultados:
+        hoja.append([
+            r["identificacion"], r["nombre"], r["programa"], r["cohorte"],
+            r["modulos"], r["promedio"], r["asistencia"], r["tipo"],
+        ])
+    # BytesIO es como escribir el Excel en un pizarrón dentro de la memoria:
+    # se puede leer y borrar, pero no queda guardado en el disco de Vercel.
+    buffer = io.BytesIO()
+    libro.save(buffer)
+    # El puntero vuelve al inicio para que send_file lea el archivo completo
+    buffer.seek(0)
+    return buffer
+
+
+# FUNCIÓN: entrega index.html con todos sus datos ya calculados
+def render_tablero(resultados, contadores, inconsistencias, programas, filtro, aviso, origen, es_subido, error=None):
+    return render_template(
+        "index.html",
+        resultados=resultados,
+        contadores=contadores,
+        inconsistencias=inconsistencias,
+        programas=programas,
+        filtro=filtro,
+        aviso=aviso,
+        origen=origen,
+        es_subido=es_subido,
+        error=error,
+    )
+
+
+# FUNCIÓN: vuelve al tablero de fábrica mostrando un aviso rojo
+def tablero_con_error(mensaje):
+    resultados, contadores, inconsistencias, programas, aviso = cargar_datos()
+    # CONDICIONAL: las inconsistencias siguen siendo solo para el administrador
+    if session.get("rol") != "admin":
+        inconsistencias = []
+    return render_tablero(
+        resultados, contadores, inconsistencias, programas,
+        "Todos", aviso, "Datos de fábrica", False, error=mensaje,
+    )
+
+
 # Ruta principal: muestra la página con contadores, filtro, tabla e inconsistencias
 @app.route("/")
 @requiere_login
@@ -384,15 +451,101 @@ def index():
         # BUCLE con CONDICIONAL implícito: filtra la lista por programa
         resultados = [r for r in resultados if r["programa"] == filtro]
     # entrega todo ya calculado a la plantilla (el HTML no calcula nada)
-    return render_template(
-        "index.html",
-        resultados=resultados,
-        contadores=contadores,
-        inconsistencias=inconsistencias,
-        programas=programas,
-        filtro=filtro,
-        aviso=aviso,
+    return render_tablero(
+        resultados, contadores, inconsistencias, programas,
+        filtro, aviso, "Datos de fábrica", False,
     )
+
+
+# Ruta del panel: recibe los dos Excel y decide entre mostrar o descargar
+@app.route("/cargar", methods=["POST"])
+@requiere_login
+@solo_admin
+def cargar():
+    # VARIABLE de tipo texto: "ver" o "descargar", según el botón pulsado
+    accion = request.form.get("accion", "ver")
+    # VARIABLES: los dos archivos que llegan del formulario
+    archivo_maestro = request.files.get("maestro")
+    archivo_registro = request.files.get("registro")
+
+    # CONDICIONAL: deben venir los dos archivos con nombre
+    if (not archivo_maestro or not archivo_maestro.filename
+            or not archivo_registro or not archivo_registro.filename):
+        return tablero_con_error(
+            "Selecciona los dos archivos: Maestro de estudiantes y Registro de evaluaciones."
+        )
+
+    # VARIABLES de tipo texto: nombres de los archivos (solo para mostrarlos)
+    nombre_maestro = Path(archivo_maestro.filename).name
+    nombre_registro = Path(archivo_registro.filename).name
+
+    # CONDICIONAL: solo se aceptan archivos .xlsx
+    if not nombre_maestro.lower().endswith(".xlsx") or not nombre_registro.lower().endswith(".xlsx"):
+        return tablero_con_error("Los dos archivos deben ser Excel con extensión .xlsx.")
+
+    # VARIABLES de tipo bytes: el contenido de cada archivo, leído en memoria
+    datos_maestro = archivo_maestro.read()
+    datos_registro = archivo_registro.read()
+
+    # CONDICIONAL: cada archivo debe pesar menos de 4 MB
+    limite = 4 * 1024 * 1024
+    if len(datos_maestro) > limite or len(datos_registro) > limite:
+        return tablero_con_error("Cada archivo debe pesar menos de 4 MB.")
+
+    # BytesIO es como poner cada archivo en un sobre que solo existe en la memoria
+    # (un borrador en el pizarrón): se usa y se borra, nunca se escribe en el disco.
+    try:
+        resultados, contadores, inconsistencias, programas, aviso = cargar_datos(
+            io.BytesIO(datos_maestro), io.BytesIO(datos_registro)
+        )
+    except Exception as error:
+        # Se registra el detalle en el servidor y se muestra un mensaje entendible
+        app.logger.warning("No se pudieron leer los Excel subidos: %s", error)
+        return tablero_con_error(
+            "No se pudieron leer los Excel. Verifica que sean archivos .xlsx válidos "
+            "y que tengan las columnas esperadas."
+        )
+
+    # CONDICIONAL: el botón de descarga devuelve un Excel armado en memoria
+    if accion == "descargar":
+        return send_file(
+            crear_excel(resultados),
+            as_attachment=True,
+            download_name="resultados_subidos.xlsx",
+            mimetype=MIMETYPE_EXCEL,
+        )
+
+    # Si el botón fue "ver", se muestra la tabla con los datos recién calculados
+    origen = "Archivos subidos: " + nombre_maestro + " y " + nombre_registro
+    return render_tablero(
+        resultados, contadores, inconsistencias, programas,
+        "Todos", aviso, origen, True,
+    )
+
+
+# Ruta de descarga: resultados de los datos de fábrica, armados en memoria
+@app.route("/descargar")
+@requiere_login
+@solo_admin
+def descargar():
+    resultados, contadores, inconsistencias, programas, aviso = cargar_datos()
+    return send_file(
+        crear_excel(resultados),
+        as_attachment=True,
+        download_name="resultados_fabrica.xlsx",
+        mimetype=MIMETYPE_EXCEL,
+    )
+
+
+# Manejador del error 413: la petición superó el límite de 4 MB
+@app.errorhandler(413)
+def demasiado_grande(error):
+    # CONDICIONAL: sin sesión, primero se pide entrar
+    if not session.get("correo"):
+        return redirect(url_for("login"))
+    return tablero_con_error(
+        "La carga supera los 4 MB permitidos. Intenta con archivos más livianos."
+    ), 413
 
 
 # Ruta exclusiva del administrador: lista completa de inconsistencias

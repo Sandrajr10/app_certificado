@@ -55,3 +55,21 @@ td.accion a:hover { color: #8a6d1f; }
 .login-aviso { background: #fff8dc; border-left: 4px solid #c9a227; color: #0a2a5a; padding: 10px 12px; border-radius: 4px; margin-bottom: 16px; font-size: 13px; line-height: 1.5; }
 .login-aviso ul { margin: 8px 0 0; padding-left: 18px; }
 .login-aviso code { background: #ffffff; padding: 1px 4px; border-radius: 3px; border: 1px solid #e0d6b0; }
+
+/* Panel de administrador para subir los Excel */
+.panel-admin { margin: 16px 0; padding: 16px 20px; background: #ffffff; border: 2px solid #0a2a5a; border-left: 8px solid #c9a227; border-radius: 8px; }
+.panel-admin h2 { margin: 0 0 4px; color: #0a2a5a; font-size: 18px; }
+.origen { margin: 0 0 12px; font-size: 14px; color: #444444; }
+.campo-archivo { margin-bottom: 10px; }
+.campo-archivo label { display: block; margin-bottom: 4px; color: #0a2a5a; font-size: 13px; font-weight: bold; }
+.campo-archivo input { font-size: 14px; }
+.botones-panel { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.botones-panel button { padding: 10px 16px; border: none; border-radius: 6px; background: #0a2a5a; color: #ffffff; font-weight: bold; cursor: pointer; }
+.botones-panel button.secundario { background: #c9a227; color: #0a2a5a; }
+.botones-panel button:hover { opacity: 0.9; }
+.descarga-fabrica { margin: 14px 0 0; }
+.no-disponible { color: #888888; font-size: 12px; }
+
+/* Aviso verde para datos subidos y aviso rojo para errores */
+.aviso-verde { margin: 16px 0; padding: 12px 16px; border-left: 6px solid green; background: #eaf7ea; color: #1d4d1d; border-radius: 4px; }
+.error { margin: 16px 0; padding: 12px 16px; border-left: 6px solid #b00020; background: #fdecea; color: #b00020; border-radius: 4px; }
