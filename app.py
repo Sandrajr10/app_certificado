@@ -1,19 +1,37 @@
 # app.py — Academia Horizonte (LA COCINA)
 # Toda la lógica vive aquí. La página solo muestra, no calcula.
 
+import os  # para leer variables de entorno (configuración en la nube)
 from pathlib import Path  # para armar rutas de archivos
 
 from flask import Flask, render_template, request  # servidor web + páginas
 from openpyxl import load_workbook  # para leer los Excel .xlsx
 
-# VARIABLE de tipo objeto: la aplicación web
-app = Flask(__name__)
+# VARIABLE de tipo objeto: la aplicación web.
+# static_folder en public/: así Vercel sirve el CSS desde su CDN (recomendado por Vercel)
+app = Flask(__name__, static_folder="public/static", static_url_path="/static")
 
-# VARIABLES de tipo ruta: Bodega en solo lectura, ubicada desde este archivo
-# pathlib + Path(__file__): funciona sin importar desde qué carpeta se arranque la app
+# VARIABLES de tipo ruta: carpeta del proyecto y nombres fijos de los Excel
 BASE_DIR = Path(__file__).resolve().parent
-RUTA_MAESTRO = BASE_DIR / "Insumos" / "Maestro_Estudiantes.xlsx"
-RUTA_REGISTRO = BASE_DIR / "Insumos" / "Registro_Evaluaciones.xlsx"
+ARCHIVO_MAESTRO = "Maestro_Estudiantes.xlsx"
+ARCHIVO_REGISTRO = "Registro_Evaluaciones.xlsx"
+
+# VARIABLE de tipo diccionario: caché simple para no releer los Excel en cada visita
+CACHE = {"clave": None, "datos": None}
+
+
+# FUNCIÓN: decide de qué carpeta se leen los Excel
+def carpeta_insumos():
+    # 1) Si existe la variable de entorno CARPETA_INSUMOS, se usa esa ruta
+    elegida = os.environ.get("CARPETA_INSUMOS")
+    if elegida:
+        return Path(elegida)
+    # 2) En el equipo local manda la carpeta real Insumos/
+    local = BASE_DIR / "Insumos"
+    if (local / ARCHIVO_MAESTRO).exists() and (local / ARCHIVO_REGISTRO).exists():
+        return local
+    # 3) En la nube (Vercel) se usan los datos ficticios de demo/
+    return BASE_DIR / "demo"
 
 
 # FUNCIÓN: calcula el promedio simple de una lista de números
@@ -42,15 +60,42 @@ def decidir_certificado(promedio, asistencia):
 
 # FUNCIÓN: lee los Excel y prepara todo lo que la página necesita
 def cargar_datos():
+    # VARIABLES de tipo ruta: ubicación de cada Excel según el entorno
+    carpeta = carpeta_insumos()
+    ruta_maestro = carpeta / ARCHIVO_MAESTRO
+    ruta_registro = carpeta / ARCHIVO_REGISTRO
+
+    # CONDICIONAL: si falta algún Excel se avisa en la página, no se rompe la app
+    if not ruta_maestro.exists() or not ruta_registro.exists():
+        aviso = (
+            "No se encontraron los archivos de Insumos. "
+            "Coloca Maestro_Estudiantes.xlsx y Registro_Evaluaciones.xlsx en Insumos/ "
+            "o configura la variable de entorno CARPETA_INSUMOS."
+        )
+        return [], {"aprobacion": 0, "participacion": 0, "sin": 0}, [], [], aviso
+
+    # CONDICIONAL: si los archivos no cambiaron desde la última lectura, se reutiliza
+    clave = (
+        str(ruta_maestro),
+        ruta_maestro.stat().st_mtime_ns,
+        str(ruta_registro),
+        ruta_registro.stat().st_mtime_ns,
+    )
+    if CACHE["clave"] == clave:
+        return CACHE["datos"]
+
     # --- 1. Leer el maestro: diccionario con clave (identificacion, programa) ---
     # VARIABLE de tipo diccionario: guarda los datos oficiales por estudiante+programa
     maestro = {}
     # VARIABLE de tipo conjunto: lista de programas sin repetidos (para el filtro)
     programas = set()
-    libro = load_workbook(RUTA_MAESTRO, read_only=True, data_only=True)
+    libro = load_workbook(ruta_maestro, read_only=True, data_only=True)
     hoja = libro.active
     # BUCLE: recorre las filas del Excel, saltando el encabezado (fila 1)
     for fila in list(hoja.rows)[1:]:
+        # CONDICIONAL: ignora filas vacías al final de la hoja
+        if fila[0].value is None:
+            continue
         # VARIABLES de tipo texto: la identificación SIEMPRE como texto en el cruce
         ident = str(fila[0].value).strip()
         nombre = str(fila[1].value).strip()
@@ -67,21 +112,24 @@ def cargar_datos():
     # --- 2. Leer el registro: agrupar notas y asistencias por (identificacion, programa) ---
     # VARIABLE de tipo diccionario: cada clave guarda sus listas de notas y asistencias
     grupos = {}
-    libro2 = load_workbook(RUTA_REGISTRO, read_only=True, data_only=True)
+    libro2 = load_workbook(ruta_registro, read_only=True, data_only=True)
     hoja2 = libro2.active
     # BUCLE: recorre cada evaluación del registro
     for fila in list(hoja2.rows)[1:]:
+        # CONDICIONAL: ignora filas vacías al final de la hoja
+        if fila[0].value is None:
+            continue
         # VARIABLES: identificación como texto, números como decimal
         ident = str(fila[0].value).strip()
         programa = str(fila[1].value).strip()
         nota = float(fila[3].value)
         asistencia = float(fila[4].value)
-        clave = (ident, programa)
+        clave_grupo = (ident, programa)
         # CONDICIONAL: si el grupo no existe, lo crea con listas vacías
-        if clave not in grupos:
-            grupos[clave] = {"notas": [], "asistencias": []}
-        grupos[clave]["notas"].append(nota)
-        grupos[clave]["asistencias"].append(asistencia)
+        if clave_grupo not in grupos:
+            grupos[clave_grupo] = {"notas": [], "asistencias": []}
+        grupos[clave_grupo]["notas"].append(nota)
+        grupos[clave_grupo]["asistencias"].append(asistencia)
     libro2.close()
 
     # --- 3. Calcular promedios y clasificar (solo grupos que están en el maestro) ---
@@ -180,7 +228,17 @@ def cargar_datos():
         "participacion": cont_participacion,
         "sin": cont_sin,
     }
-    return resultados, contadores, inconsistencias, sorted(programas)
+
+    # Se guarda el resultado en la caché antes de devolverlo
+    CACHE["clave"] = clave
+    CACHE["datos"] = (
+        resultados,
+        contadores,
+        inconsistencias,
+        sorted(programas),
+        None,
+    )
+    return CACHE["datos"]
 
 
 # Ruta principal: muestra la página con contadores, filtro, tabla e inconsistencias
@@ -188,7 +246,7 @@ def cargar_datos():
 def index():
     # VARIABLE de tipo texto: lo que el usuario eligió en el filtro (o "Todos")
     filtro = request.args.get("programa", "Todos")
-    resultados, contadores, inconsistencias, programas = cargar_datos()
+    resultados, contadores, inconsistencias, programas, aviso = cargar_datos()
     # CONDICIONAL: si hay filtro, deja solo ese programa; si no, muestra todo
     if filtro != "Todos":
         # BUCLE con CONDICIONAL implícito: filtra la lista por programa
@@ -201,9 +259,11 @@ def index():
         inconsistencias=inconsistencias,
         programas=programas,
         filtro=filtro,
+        aviso=aviso,
     )
 
 
-# Arranque: abre http://localhost:5000 en el navegador
+# Arranque local: abre http://localhost:5000 en el navegador.
+# En Vercel esta parte no se ejecuta: Vercel usa directamente el objeto "app".
 if __name__ == "__main__":
     app.run(debug=True)

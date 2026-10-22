@@ -12,6 +12,11 @@
     <p>Certificados por cohorte — Technical Programs</p>
   </header>
 
+  <!-- Aviso que envía app.py cuando faltan los Excel -->
+  {% if aviso %}
+  <div class="aviso">{{ aviso }}</div>
+  {% endif %}
+
   <!-- Contadores que la Cocina (app.py) ya calculó -->
   <section class="contadores">
     <div class="tarjeta verde">Aprobación: {{ contadores.aprobacion }}</div>
@@ -41,6 +46,11 @@
       </tr>
     </thead>
     <tbody>
+      {% if not resultados %}
+      <tr>
+        <td colspan="6" class="vacio">No hay resultados para este programa.</td>
+      </tr>
+      {% endif %}
       {% for r in resultados %}
       <tr>
         <td>{{ r.nombre }}</td>

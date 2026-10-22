@@ -2,6 +2,12 @@
 __pycache__/
 *.pyc
 
+# Entorno virtual
+.venv/
+
+# Datos personales reales: nunca se suben al repositorio público
+Insumos/
+
 # Archivos temporales
 *.tmp
 *.bak
