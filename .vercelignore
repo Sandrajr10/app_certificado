@@ -2,6 +2,9 @@
 # Insumos/ tiene datos personales reales: se quedan solo en el equipo local.
 Insumos/
 
+# Credenciales locales: en Vercel se configuran como variables de entorno
+.env
+
 # Archivos que no hacen falta dentro de la función
 __pycache__/
 *.pyc

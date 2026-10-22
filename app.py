@@ -1,16 +1,85 @@
 # app.py — Academia Horizonte (LA COCINA)
 # Toda la lógica vive aquí. La página solo muestra, no calcula.
 
+import hmac  # comparación segura de textos (correo y contraseña)
 import os  # para leer variables de entorno (configuración en la nube)
 from datetime import date  # para la fecha de emisión del certificado
+from functools import wraps  # para conservar el nombre de las funciones decoradas
 from pathlib import Path  # para armar rutas de archivos
 
-from flask import Flask, render_template, request  # servidor web + páginas
+from dotenv import load_dotenv  # lee el archivo .env cuando existe en local
+from flask import Flask, redirect, render_template, request, session, url_for
 from openpyxl import load_workbook  # para leer los Excel .xlsx
+
+# Carga las variables del archivo .env (en Vercel no existe y no pasa nada)
+load_dotenv()
 
 # VARIABLE de tipo objeto: la aplicación web.
 # static_folder en public/: así Vercel sirve el CSS desde su CDN (recomendado por Vercel)
 app = Flask(__name__, static_folder="public/static", static_url_path="/static")
+
+# Clave para firmar la cookie de sesión. En producción debe venir de SECRET_KEY.
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "clave-solo-para-demostracion")
+
+# VARIABLES de tipo texto: credenciales leídas del entorno, NUNCA escritas aquí.
+# ADMIN_* entra con rol "admin"; USUARIO_* entra con rol "usuario".
+ADMIN_CORREO = os.environ.get("ADMIN_CORREO", "").strip()
+ADMIN_CLAVE = os.environ.get("ADMIN_CLAVE", "")
+USUARIO_CORREO = os.environ.get("USUARIO_CORREO", "").strip()
+USUARIO_CLAVE = os.environ.get("USUARIO_CLAVE", "")
+
+# CONDICIONAL: si falta cualquiera de las cuatro variables, se activa el modo demostración
+MODO_DEMO = not (ADMIN_CORREO and ADMIN_CLAVE and USUARIO_CORREO and USUARIO_CLAVE)
+
+if MODO_DEMO:
+    # Credenciales de prueba: solo se usan cuando no hay variables configuradas
+    ADMIN_CORREO = "admin@academia.demo"
+    ADMIN_CLAVE = "Admin123"
+    USUARIO_CORREO = "usuario@academia.demo"
+    USUARIO_CLAVE = "Usuario123"
+
+
+# FUNCIÓN: compara dos textos de forma segura (admite acentos y eñes)
+def textos_iguales(a, b):
+    return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
+
+
+# FUNCIÓN: revisa correo y contraseña y devuelve el rol, o None si no coincide
+def credenciales_validas(correo, clave):
+    # VARIABLES de tipo texto: se limpian los espacios y el correo pasa a minúsculas
+    correo = (correo or "").strip().lower()
+    clave = clave or ""
+    # CONDICIONAL: primero se prueba la cuenta de administrador
+    # La comparación es segura y no filtra información por el tiempo de respuesta
+    if textos_iguales(correo, ADMIN_CORREO.lower()) and textos_iguales(clave, ADMIN_CLAVE):
+        return "admin"
+    # CONDICIONAL: luego la cuenta de usuario normal
+    if textos_iguales(correo, USUARIO_CORREO.lower()) and textos_iguales(clave, USUARIO_CLAVE):
+        return "usuario"
+    # Si no coincide ninguna, no hay rol
+    return None
+
+
+# FUNCIÓN decoradora: obliga a iniciar sesión antes de ejecutar una ruta
+def requiere_login(vista):
+    @wraps(vista)
+    def envoltura(*args, **kwargs):
+        # CONDICIONAL: sin correo en la sesión no hay usuario conectado
+        if not session.get("correo"):
+            return redirect(url_for("login"))
+        # Si hay sesión, se ejecuta la ruta normalmente
+        return vista(*args, **kwargs)
+    return envoltura
+
+
+# FUNCIÓN: deja el correo y el rol disponibles en todas las plantillas
+@app.context_processor
+def datos_de_sesion():
+    return {
+        "correo_sesion": session.get("correo"),
+        "rol_sesion": session.get("rol"),
+    }
+
 
 # VARIABLES de tipo ruta: carpeta del proyecto y nombres fijos de los Excel
 BASE_DIR = Path(__file__).resolve().parent
@@ -243,8 +312,54 @@ def cargar_datos():
     return CACHE["datos"]
 
 
+# Ruta de entrada: muestra el formulario y valida correo + contraseña
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    # CONDICIONAL: si ya hay sesión, no tiene sentido volver a entrar
+    if session.get("correo"):
+        return redirect(url_for("index"))
+    # VARIABLE de tipo texto: mensaje de error para la pantalla (empieza vacío)
+    error = None
+    # VARIABLE de tipo texto: correo escrito, para no borrarlo si hay error
+    correo = ""
+    # CONDICIONAL: solo se valida cuando el formulario se envía (POST)
+    if request.method == "POST":
+        correo = request.form.get("correo", "").strip()
+        clave = request.form.get("clave", "")
+        rol = credenciales_validas(correo, clave)
+        # CONDICIONAL: si no hay rol, las credenciales están mal
+        if rol is None:
+            error = "Correo o contraseña incorrectos."
+        else:
+            # Se reinicia la sesión y se guardan solo los datos necesarios
+            session.clear()
+            session["correo"] = correo.lower()
+            session["rol"] = rol
+            return redirect(url_for("index"))
+    # Se entrega la pantalla; en modo demostración muestra las credenciales de prueba
+    return render_template(
+        "login.html",
+        error=error,
+        correo=correo,
+        aviso_demo=MODO_DEMO,
+        demo_admin_correo=ADMIN_CORREO if MODO_DEMO else "",
+        demo_admin_clave=ADMIN_CLAVE if MODO_DEMO else "",
+        demo_usuario_correo=USUARIO_CORREO if MODO_DEMO else "",
+        demo_usuario_clave=USUARIO_CLAVE if MODO_DEMO else "",
+    )
+
+
+# Ruta de salida: borra la sesión y vuelve a la pantalla de entrada
+@app.route("/salir")
+@requiere_login
+def salir():
+    session.clear()
+    return redirect(url_for("login"))
+
+
 # Ruta principal: muestra la página con contadores, filtro, tabla e inconsistencias
 @app.route("/")
+@requiere_login
 def index():
     # VARIABLE de tipo texto: lo que el usuario eligió en el filtro (o "Todos")
     filtro = request.args.get("programa", "Todos")
@@ -280,6 +395,7 @@ def fecha_emision():
 
 # Ruta del certificado: se abre desde el enlace "Ver certificado" de la tabla
 @app.route("/certificado/<identificacion>/<path:programa>")
+@requiere_login
 def certificado(identificacion, programa):
     resultados, contadores, inconsistencias, programas, aviso = cargar_datos()
     # VARIABLE: aquí se guarda la fila que coincida con estudiante y programa

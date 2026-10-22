@@ -6,6 +6,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='certificado.css') }}">
 </head>
 <body>
+  {% include "_barra_usuario.html" %}
   <!-- Botones que no salen al imprimir -->
   <div class="acciones">
     <a class="boton" href="{{ url_for('index') }}">← Volver a la lista</a>

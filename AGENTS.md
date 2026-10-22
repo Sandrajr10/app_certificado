@@ -11,7 +11,7 @@
 ## Decisiones técnicas (ver PLAN.md para el orden)
 - Excel con `openpyxl` (lee `.xlsx` directo, liviana). Sin `pandas` (oculta la lógica) y sin `xlrd` (ya no lee `.xlsx`).
 - Web con `Flask` (mínimo, `app.py` + `templates/`). Sin `FastAPI`/`Django` (sobran para esto).
-- Estructura actual: `app.py`, `requirements.txt`, `vercel.json` y `.vercelignore` en raíz; `templates/index.html`, `templates/certificado.html`, `templates/mensaje.html`; `public/static/style.css`, `public/static/certificado.css`; `demo/*.xlsx` (datos ficticios para la nube).
+- Estructura actual: `app.py`, `requirements.txt`, `vercel.json` y `.vercelignore` en raíz; `templates/login.html`, `templates/_barra_usuario.html`, `templates/index.html`, `templates/certificado.html`, `templates/mensaje.html`; `public/static/style.css`, `public/static/certificado.css`; `demo/*.xlsx` (datos ficticios para la nube); `.env.ejemplo` (sí se sube) y `.env` (ignorado).
 - `Identificacion` siempre como texto en el cruce.
 
 ## Entradas (columnas verificadas contra el binario el 2026-10-15 vía XML interno)
@@ -41,9 +41,20 @@
 - `cargar_datos()` tiene caché por fecha de modificación de los Excel y devuelve un aviso si faltan archivos.
 
 ## Rutas
-- `/` — tabla con contadores, filtro por programa e inconsistencias.
-- `/certificado/<identificacion>/<programa>` — certificado imprimible (Aprobación o Participación). Si la asistencia es < 80 muestra el motivo; si no existe la combinación, 404 con mensaje.
+- `/login` — pantalla de entrada; valida correo y contraseña contra variables de entorno.
+- `/salir` — borra la sesión y vuelve al login.
+- `/` — tabla con contadores, filtro por programa e inconsistencias. Requiere sesión.
+- `/certificado/<identificacion>/<programa>` — certificado imprimible (Aprobación o Participación). Requiere sesión. Si la asistencia es < 80 muestra el motivo; si no existe la combinación, 404 con mensaje.
 - El certificado incluye cohorte, promedio, asistencia y fecha de emisión; el HTML no calcula nada.
+
+## Acceso y sesiones
+- Flask `session` (cookie firmada). Sin base de datos todavía.
+- Credenciales en variables de entorno: `ADMIN_CORREO`/`ADMIN_CLAVE` (rol `admin`) y `USUARIO_CORREO`/`USUARIO_CLAVE` (rol `usuario`). Nunca en el código.
+- Si falta cualquiera de las cuatro, se activa `MODO_DEMO` con credenciales de prueba visibles en `/login`.
+- `SECRET_KEY` firma la sesión; en Vercel debe configurarse como variable de entorno.
+- `requiere_login` protege `/`, `/certificado/...` y `/salir`; redirige a `/login` si no hay sesión.
+- El rol se muestra en la barra superior, pero **aún no limita vistas**: admin y usuario ven lo mismo (pendiente).
+- `python-dotenv` carga `.env` en local; `.env` está en `.gitignore` y `.vercelignore`.
 
 ## Insumos (solo lectura)
 - No editar `Insumos/*.xlsx`. Para pruebas, pedir al usuario una copia o una exportación a CSV.

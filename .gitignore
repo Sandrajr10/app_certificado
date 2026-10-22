@@ -8,6 +8,9 @@ __pycache__/
 # Datos personales reales: nunca se suben al repositorio público
 Insumos/
 
+# Variables de entorno locales: contienen correos y contraseñas
+.env
+
 # Archivos temporales
 *.tmp
 *.bak

@@ -6,6 +6,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  {% include "_barra_usuario.html" %}
   <!-- SALÓN: solo muestra lo que app.py ya calculó. Aquí no hay cálculos. -->
   <header class="encabezado">
     <h1>Academia Horizonte</h1>

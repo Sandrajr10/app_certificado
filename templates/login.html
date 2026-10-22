@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Iniciar sesión — Academia Horizonte</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-pagina">
+  <!-- Pantalla de entrada: solo muestra; la validación la hace app.py -->
+  <main class="login-caja">
+    <div class="login-marca">
+      <div class="login-sello">AH</div>
+      <div>
+        <p class="login-academia">ACADEMIA HORIZONTE</p>
+        <p class="login-lema">Formación técnica para empresas</p>
+      </div>
+    </div>
+
+    <h1>Iniciar sesión</h1>
+    <p class="login-subtitulo">Ingrese su correo y contraseña para ver los certificados.</p>
+
+    <!-- Aviso que aparece solo cuando faltan las variables de entorno -->
+    {% if aviso_demo %}
+    <div class="login-aviso">
+      <strong>Modo demostración.</strong>
+      No se encontraron las variables de entorno, así que se usan estas credenciales de prueba:
+      <ul>
+        <li>Administrador: <code>{{ demo_admin_correo }}</code> / <code>{{ demo_admin_clave }}</code></li>
+        <li>Usuario: <code>{{ demo_usuario_correo }}</code> / <code>{{ demo_usuario_clave }}</code></li>
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Mensaje rojo cuando el correo o la contraseña no coinciden -->
+    {% if error %}
+    <div class="login-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('login') }}">
+      <label for="correo">Correo</label>
+      <input type="email" id="correo" name="correo" value="{{ correo }}" required autofocus autocomplete="username">
+
+      <label for="clave">Contraseña</label>
+      <input type="password" id="clave" name="clave" required autocomplete="current-password">
+
+      <button type="submit">Entrar</button>
+    </form>
+  </main>
+</body>
+</html>

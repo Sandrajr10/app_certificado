@@ -1,0 +1,6 @@
+<!-- Barra del usuario conectado: app.py entrega correo_sesion y rol_sesion -->
+<div class="barra-usuario">
+  <span class="usuario-correo">{{ correo_sesion }}</span>
+  <span class="usuario-rol">{{ rol_sesion }}</span>
+  <a class="boton-salir" href="{{ url_for('salir') }}">Salir</a>
+</div>

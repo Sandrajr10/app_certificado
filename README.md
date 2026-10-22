@@ -8,14 +8,18 @@ o Sin certificado).
 
 ```
 app.py                      # Toda la lógica (la "cocina")
-requirements.txt            # Flask + openpyxl
+requirements.txt            # Flask + openpyxl + python-dotenv
 iniciar_app.bat             # Arranque local con doble clic
+templates/login.html        # Pantalla de entrada (correo y contraseña)
+templates/_barra_usuario.html  # Correo, rol y botón Salir
 templates/index.html        # Página (el "salón": solo muestra)
 public/static/style.css     # Estilos (Vercel los sirve desde public/)
 demo/                       # Excel ficticios para la demo pública
 Insumos/                    # Excel reales (NO se suben: datos personales)
+.env.ejemplo                # Nombres de las variables (sí se sube)
+.env                        # Credenciales locales (NO se sube)
 vercel.json                 # Configuración de despliegue
-.vercelignore               # Evita subir Insumos/ y archivos innecesarios
+.vercelignore               # Evita subir Insumos/, .env y archivos innecesarios
 ```
 
 ## Ejecutar en local
@@ -35,6 +39,31 @@ vercel.json                 # Configuración de despliegue
 3. Abrir <http://localhost:5000>
 
 La app usa `Insumos/*.xlsx` si existen; si no, usa `demo/*.xlsx`.
+
+## Acceso
+
+La app pide correo y contraseña antes de mostrar cualquier dato. Las cuentas se
+leen de variables de entorno; nunca están escritas en el código.
+
+1. Copiar `.env.ejemplo` como `.env` y completar los valores:
+
+   ```
+   SECRET_KEY=una-clave-larga-y-aleatoria
+   ADMIN_CORREO=...
+   ADMIN_CLAVE=...
+   USUARIO_CORREO=...
+   USUARIO_CLAVE=...
+   ```
+
+2. Si falta alguna de las cuatro variables de cuenta, la app entra en **modo
+   demostración** y muestra en la pantalla de entrada las credenciales de prueba.
+
+3. En Vercel, configurar esas mismas variables en *Settings → Environment
+   Variables*. `SECRET_KEY` es obligatoria para que la sesión se mantenga entre
+   instancias.
+
+Roles actuales: `admin` y `usuario`. Por ahora ambos ven la misma información; el
+rol se muestra en el encabezado y la restricción de vistas por rol queda pendiente.
 
 ## Despliegue en Vercel
 
